@@ -11,6 +11,7 @@ import com.smartdesk.booking.repository.DeskRepository;
 import com.smartdesk.booking.repository.EmployeeRepository;
 import com.smartdesk.booking.repository.ZoneRepository;
 import com.smartdesk.booking.service.DeskService;
+import com.smartdesk.booking.service.placement.SpatialIndex;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +25,7 @@ public class DeskServiceImpl implements DeskService {
     private final DeskRepository deskRepository;
     private final ZoneRepository zoneRepository;
     private final EmployeeRepository employeeRepository;
+    private final SpatialIndex spatialIndex;
 
     @Override
     @Transactional
@@ -49,6 +51,10 @@ public class DeskServiceImpl implements DeskService {
         }
         
         Desk savedDesk = deskRepository.save(desk);
+        
+        // Rebuild the spatial index for this floor since layout changed
+        spatialIndex.rebuildForFloor(zone.getFloor().getId());
+        
         return mapToResponse(savedDesk);
     }
 

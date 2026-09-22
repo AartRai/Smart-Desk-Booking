@@ -19,4 +19,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             Long employeeId, LocalDate bookingDate, TimeWindow timeWindow, BookingStatus status);
 
     List<Booking> findByEmployeeIdOrderByBookingDateDesc(Long employeeId);
+
+    List<Booking> findByEmployeeTeamIdAndBookingDateAndTimeWindowAndStatusNot(
+            Long teamId, LocalDate bookingDate, TimeWindow timeWindow, BookingStatus status);
 }

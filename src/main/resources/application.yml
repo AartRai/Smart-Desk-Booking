@@ -24,3 +24,6 @@ management:
   endpoint:
     health:
       show-details: always
+
+spring.sql.init.mode: always
+spring.jpa.defer-datasource-initialization: true

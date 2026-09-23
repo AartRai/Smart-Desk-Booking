@@ -18,6 +18,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -105,6 +107,30 @@ public class BookingServiceImpl implements BookingService {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    @Transactional
+    public BookingResponse checkIn(Long bookingId, Long employeeId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
+
+        if (!booking.getEmployee().getId().equals(employeeId)) {
+            throw new IllegalArgumentException("You can only check in to your own bookings");
+        }
+
+        if (booking.getStatus() != BookingStatus.BOOKED) {
+            throw new IllegalArgumentException("Cannot check in. Booking is already " + booking.getStatus());
+        }
+
+        if (!booking.getBookingDate().equals(LocalDate.now())) {
+            throw new IllegalArgumentException("You can only check in on the day of the booking");
+        }
+
+        booking.setCheckInTime(LocalDateTime.now());
+        Booking savedBooking = bookingRepository.save(booking);
+
+        return mapToResponse(savedBooking);
+    }
+
     private BookingResponse mapToResponse(Booking booking) {
         BookingResponse response = new BookingResponse();
         response.setId(booking.getId());
@@ -113,6 +139,7 @@ public class BookingServiceImpl implements BookingService {
         response.setBookingDate(booking.getBookingDate());
         response.setTimeWindow(booking.getTimeWindow());
         response.setStatus(booking.getStatus());
+        response.setCheckInTime(booking.getCheckInTime());
         return response;
     }
 }

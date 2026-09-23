@@ -27,3 +27,8 @@ management:
 
 spring.sql.init.mode: always
 spring.jpa.defer-datasource-initialization: true
+
+booking:
+  no-show:
+    cron: "0 0/15 * * * *"
+    cutoff-time: "10:00"

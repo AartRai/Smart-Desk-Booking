@@ -5,6 +5,7 @@ import com.smartdesk.booking.entity.TimeWindow;
 import lombok.Data;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Data
 public class BookingResponse {
@@ -14,4 +15,5 @@ public class BookingResponse {
     private LocalDate bookingDate;
     private TimeWindow timeWindow;
     private BookingStatus status;
+    private LocalDateTime checkInTime;
 }

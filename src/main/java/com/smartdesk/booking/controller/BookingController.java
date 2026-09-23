@@ -38,4 +38,11 @@ public class BookingController {
             @RequestHeader("X-Employee-Id") Long employeeId) {
         return bookingService.getMyBookings(employeeId);
     }
+
+    @PostMapping("/{id}/checkin")
+    public BookingResponse checkIn(
+            @PathVariable Long id,
+            @RequestHeader("X-Employee-Id") Long employeeId) {
+        return bookingService.checkIn(id, employeeId);
+    }
 }

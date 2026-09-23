@@ -9,4 +9,5 @@ public interface BookingService {
     BookingResponse createBooking(BookingRequest request, Long employeeId);
     void cancelBooking(Long bookingId, Long employeeId);
     List<BookingResponse> getMyBookings(Long employeeId);
+    BookingResponse checkIn(Long bookingId, Long employeeId);
 }

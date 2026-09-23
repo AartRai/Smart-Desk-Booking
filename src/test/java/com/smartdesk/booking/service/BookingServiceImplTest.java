@@ -168,4 +168,58 @@ public class BookingServiceImplTest {
         });
         assertEquals("Booking failed due to a conflict. The desk might have just been booked.", exception.getMessage());
     }
+
+    @Test
+    void testCheckIn_Success() {
+        Booking booking = new Booking();
+        booking.setId(100L);
+        booking.setEmployee(employee1);
+        booking.setDesk(hotDesk);
+        booking.setBookingDate(LocalDate.now());
+        booking.setStatus(BookingStatus.BOOKED);
+        booking.setTimeWindow(TimeWindow.FULL_DAY);
+
+        when(bookingRepository.findById(100L)).thenReturn(Optional.of(booking));
+        when(bookingRepository.save(any(Booking.class))).thenReturn(booking);
+
+        BookingResponse response = bookingService.checkIn(100L, 1L);
+
+        assertNotNull(response.getCheckInTime());
+        assertEquals(BookingStatus.BOOKED, response.getStatus());
+        verify(bookingRepository, times(1)).save(booking);
+    }
+
+    @Test
+    void testCheckIn_WrongEmployee_ThrowsException() {
+        Booking booking = new Booking();
+        booking.setId(100L);
+        booking.setEmployee(employee2);
+        booking.setBookingDate(LocalDate.now());
+        booking.setStatus(BookingStatus.BOOKED);
+
+        when(bookingRepository.findById(100L)).thenReturn(Optional.of(booking));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            bookingService.checkIn(100L, 1L);
+        });
+        
+        assertEquals("You can only check in to your own bookings", exception.getMessage());
+    }
+
+    @Test
+    void testCheckIn_WrongDate_ThrowsException() {
+        Booking booking = new Booking();
+        booking.setId(100L);
+        booking.setEmployee(employee1);
+        booking.setBookingDate(LocalDate.now().plusDays(1));
+        booking.setStatus(BookingStatus.BOOKED);
+
+        when(bookingRepository.findById(100L)).thenReturn(Optional.of(booking));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            bookingService.checkIn(100L, 1L);
+        });
+        
+        assertEquals("You can only check in on the day of the booking", exception.getMessage());
+    }
 }

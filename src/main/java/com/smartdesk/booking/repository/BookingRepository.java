@@ -4,6 +4,8 @@ import com.smartdesk.booking.entity.Booking;
 import com.smartdesk.booking.entity.BookingStatus;
 import com.smartdesk.booking.entity.TimeWindow;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
@@ -28,4 +30,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     long countByEmployeeTeamIdAndDeskZoneFloorIdAndBookingDateAndTimeWindowAndStatusNot(
             Long teamId, Long floorId, LocalDate bookingDate, TimeWindow timeWindow, BookingStatus status);
+
+    @Query("SELECT b FROM Booking b WHERE b.bookingDate = :date AND b.status = 'BOOKED' AND b.checkInTime IS NULL AND b.desk.deskType = 'HOT'")
+    List<Booking> findNoShowHotDeskBookings(@Param("date") LocalDate date);
 }

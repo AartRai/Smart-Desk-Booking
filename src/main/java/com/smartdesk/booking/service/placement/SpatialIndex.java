@@ -26,7 +26,8 @@ public class SpatialIndex {
     // FloorId -> (CellKey -> List of Desks)
     private final Map<Long, Map<CellKey, List<Desk>>> index = new ConcurrentHashMap<>();
 
-    @PostConstruct
+    @org.springframework.context.event.EventListener(org.springframework.boot.context.event.ApplicationReadyEvent.class)
+    @org.springframework.transaction.annotation.Transactional
     public void init() {
         log.info("Initializing Spatial Index for Desks...");
         rebuildAll();

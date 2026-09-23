@@ -1,9 +1,18 @@
 INSERT INTO teams (name) VALUES ('Engineering');
 INSERT INTO employees (name, email, team_id, role) VALUES ('Alice', 'alice@example.com', 1, 'EMPLOYEE');
 INSERT INTO employees (name, email, team_id, role) VALUES ('Bob', 'bob@example.com', 1, 'EMPLOYEE');
+INSERT INTO employees (name, email, team_id, role) VALUES ('Charlie', 'admin@example.com', 1, 'ADMIN');
 
 INSERT INTO floors (name, max_capacity, timezone) VALUES ('Level 1', 100, 'UTC');
 INSERT INTO zones (name, floor_id) VALUES ('Zone A', 1);
 
 INSERT INTO desks (desk_type, x_coordinate, y_coordinate, zone_id, assigned_employee_id) VALUES ('HOT', 10.0, 10.0, 1, NULL);
 INSERT INTO desks (desk_type, x_coordinate, y_coordinate, zone_id, assigned_employee_id) VALUES ('FIXED', 20.0, 20.0, 1, 1); -- Assigned to Alice
+INSERT INTO desks (desk_type, x_coordinate, y_coordinate, zone_id, assigned_employee_id) VALUES ('HOT', 15.0, 10.0, 1, NULL);
+INSERT INTO desks (desk_type, x_coordinate, y_coordinate, zone_id, assigned_employee_id) VALUES ('HOT', 25.0, 15.0, 1, NULL);
+INSERT INTO desks (desk_type, x_coordinate, y_coordinate, zone_id, assigned_employee_id) VALUES ('HOT', 30.0, 10.0, 1, NULL);
+INSERT INTO desks (desk_type, x_coordinate, y_coordinate, zone_id, assigned_employee_id) VALUES ('HOT', 10.0, 30.0, 1, NULL);
+INSERT INTO desks (desk_type, x_coordinate, y_coordinate, zone_id, assigned_employee_id) VALUES ('HOT', 20.0, 30.0, 1, NULL);
+INSERT INTO desks (desk_type, x_coordinate, y_coordinate, zone_id, assigned_employee_id) VALUES ('HOT', 40.0, 40.0, 1, NULL);
+INSERT INTO desks (desk_type, x_coordinate, y_coordinate, zone_id, assigned_employee_id) VALUES ('HOT', 50.0, 50.0, 1, NULL);
+INSERT INTO desks (desk_type, x_coordinate, y_coordinate, zone_id, assigned_employee_id) VALUES ('HOT', 60.0, 60.0, 1, NULL);

@@ -30,8 +30,9 @@ The system operates seamlessly across multiple global regions. The `Floor` entit
 A Spring `@Scheduled` cron job routinely sweeps the database for unchecked-in bookings that have surpassed their local 10:00 AM cutoff time, automatically cancelling them and freeing up inventory for other employees.
 
 ### 6. Caching & Monitoring
+- **Real-Time Dashboards (Prometheus & Grafana)**: The `docker-compose.yml` provides a full observability stack. Prometheus scrapes JVM, HTTP, and DB metrics exposed by Micrometer on `/actuator/prometheus`. Grafana (`http://localhost:3000`, admin/admin) provides real-time dashboards to track system health and active bookings.
+- **Advanced Logging Mechanisms (Logback)**: Configured via `logback-spring.xml` to use a `RollingFileAppender`. In addition to the console, logs are written to `logs/booking-app.log` with daily rotation, providing comprehensive error recovery and forensic logging mechanisms to promptly identify issues.
 - **Spring Caching**: Read-heavy operations (like retrieving floor maps) are cached in-memory (`@Cacheable`), with cache eviction (`@CacheEvict`) upon modifications, drastically reducing database load.
-- **Actuator**: Health, metrics, and cache statuses are exposed via Spring Boot Actuator endpoints on port `8081`.
 - **Global Error Handling**: `@ControllerAdvice` provides clean, structured JSON error responses for data integrity violations, validation failures, and malformed requests.
 
 ## Getting Started
@@ -41,12 +42,18 @@ A Spring `@Scheduled` cron job routinely sweeps the database for unchecked-in bo
 - Maven installed
 
 ### Running the Application
-The application will start on `http://localhost:8081`. 
+The application is configured to run against a real PostgreSQL database for production realism.
 
+1. Start the PostgreSQL database using Docker Compose:
 ```bash
-./mvnw clean install
-./mvnw spring-boot:run
+docker compose up -d
 ```
+
+2. Run the application with the `postgres` profile active:
+```bash
+SPRING_PROFILES_ACTIVE=postgres ./mvnw spring-boot:run
+```
+*(The application will start on `http://localhost:8081`)*
 
 An H2 database is automatically spun up and seeded with initial data (employees, floors, zones, desks) from `src/main/resources/data.sql`.
 
@@ -64,7 +71,7 @@ The project contains 22 comprehensive unit and integration tests covering concur
 | `POST` | `/api/admin/floors` | Create a new Floor |
 | `POST` | `/api/admin/zones` | Create a new Zone |
 | `POST` | `/api/admin/desks` | Create a new Desk |
-| `POST` | `/api/bookings` | Book a specific desk |
+| `POST` | `/api/bookings` | [Book a specific desk](#1-successful-booking) |
 | `POST` | `/api/bookings/auto` | Auto-book a desk near teammates |
 | `POST` | `/api/bookings/{id}/checkin` | Check into a booking |
 | `GET` | `/actuator/health` | Check application health (Port 8081) |
@@ -80,6 +87,7 @@ The project contains 22 comprehensive unit and integration tests covering concur
 - **Placement Algorithm (Grid-Hashing vs PostGIS/K-D Tree):** We use an in-memory grid-hashing (Spatial Index) instead of a k-d tree or complex PostGIS spatial queries. Given that floor plans rarely change mid-day and have a bounded size (e.g. 500 desks), an in-memory `ConcurrentHashMap` of pre-computed cell grid buckets provides instantaneous neighbor lookups without paying the heavy I/O overhead of executing bounding-box SQL queries on every auto-book attempt.
 - **Caching Choice (In-Process vs Redis):** We utilize in-process Spring caching (`ConcurrentMapCacheManager`) instead of a distributed cache like Redis. Since the cached data consists solely of static layout entities (Floors, Zones) and this is designed as a single-node deployment, in-memory caching is dramatically simpler to operate, requires fewer moving parts, and eliminates network latency entirely.
 - **Cut-off Boundary Decision:** The cut-off time boundary is strictly exclusive (i.e. exact equality to 10:00:00 counts as "too late"). This guarantees that edge-case user cancellations exactly at the boundary moment are predictably denied, ensuring the background release job can safely free up the desk without race conditions against last-millisecond user actions.
+- **Database Split (H2 vs. Postgres):** We keep an embedded H2 database as the default for fast, zero-dependency unit testing, but use a real Dockerized PostgreSQL instance for the runtime application and concurrency integration tests to accurately reflect how unique constraints and locking behave in a real production RDBMS.
 
 ## Cost Estimation (Time & Space Complexity)
 - **Booking Write Path:** **Time: O(1) / Space: O(1).** The actual booking insertion is an O(1) B-Tree index lookup/insertion for the unique constraint. Space is strictly O(1) per request to store the entity.
@@ -87,17 +95,11 @@ The project contains 22 comprehensive unit and integration tests covering concur
 - **Quota Check:** **Time: O(1) / Space: O(1).** The quota enforcement relies on a highly optimized database `COUNT` query utilizing composite indexes on `(team_id, floor_id, date)`. This provides near constant-time validation with O(1) memory overhead in the application server.
 
 ## Demo
-Please refer to the `demo/instructions.md` file for exact cURL requests to replicate these scenarios.
+Please refer to the `demo/README.md` file for exact cURL requests to replicate these scenarios.
 *Screenshots below demonstrate the core requirements being met:*
 
 ### 1. Successful Booking
 ![Successful Booking](demo/1_successful_booking.png)
-
-### 2. Successful Cancellation Before Cut-off
-![Cancel Before Cut-off](demo/2_cancel_before_cutoff.png)
-
-### 3. Rejected Cancellation After Cut-off
-![Cancel After Cut-off](demo/3_cancel_after_cutoff.png)
 
 ### 4. 409 Conflict (Double Booking Race)
 ![Double Booking Conflict](demo/4_double_booking_conflict.png)

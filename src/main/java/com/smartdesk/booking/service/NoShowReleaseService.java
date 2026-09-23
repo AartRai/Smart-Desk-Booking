@@ -7,6 +7,10 @@ import com.smartdesk.booking.repository.FloorRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataAccessException;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Recover;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +39,7 @@ public class NoShowReleaseService {
      */
     @Scheduled(cron = "${booking.no-show.cron:0 0/15 * * * *}")
     @Transactional
+    @Retryable(retryFor = {Exception.class}, maxAttempts = 3, backoff = @Backoff(delay = 1000, multiplier = 2))
     public void releaseNoShows() {
         LocalTime cutoffTime = LocalTime.parse(cutoffTimeStr);
         log.info("Running No-Show Auto-Release Job");
@@ -72,5 +77,10 @@ public class NoShowReleaseService {
         }
         
         log.info("Successfully released {} no-show bookings globally.", totalReleased);
+    }
+
+    @Recover
+    public void recoverReleaseNoShows(Exception e) {
+        log.error("Failed to execute no-show release job after multiple retries. The database might be down or locked.", e);
     }
 }

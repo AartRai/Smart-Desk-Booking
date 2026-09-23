@@ -1,0 +1,298 @@
+{
+  "info": {
+    "name": "Smart Desk Booking - Final Evaluation",
+    "description": "Complete test suite covering all assignment requirements. **Instructions:** Run the Login requests first. The test script will automatically save your JWT token to the `token` collection variable so you don't have to copy-paste it!",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Authentication (Plus Point 1)",
+      "item": [
+        {
+          "name": "Login (Employee 1 / Alice)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"token\", jsonData.token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Login (Employee 2 / Bob)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"token\", jsonData.token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeId\": 2\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Login (Admin / Charlie)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"token\", jsonData.token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeId\": 3\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Core Booking & Cancellations (Requirement I)",
+      "item": [
+        {
+          "name": "1. Create a Hot Desk Booking",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ]
+            },
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deskId\": 1,\n  \"bookingDate\": \"2026-10-15\",\n  \"timeWindow\": \"MORNING\",\n  \"employeeId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "bookings"]
+            }
+          }
+        },
+        {
+          "name": "2. Cancel Booking (Legal / Before Cutoff)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "bookings", "1"]
+            }
+          }
+        },
+        {
+          "name": "3. Booking (For Cutoff Failure)",
+          "description": "Sets up a booking for TOMORROW so you can test the cancellation failure.",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ]
+            },
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deskId\": 3,\n  \"bookingDate\": \"2026-09-24\",\n  \"timeWindow\": \"MORNING\",\n  \"employeeId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "bookings"]
+            }
+          }
+        },
+        {
+          "name": "4. Trigger No-Show Release (Requirement III)",
+          "description": "Manually triggers the @Scheduled cron job to clean up missed check-ins.",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/bookings/release-no-shows",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "bookings", "release-no-shows"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Concurrency / Double Booking Race (Requirement II)",
+      "description": "To test this manually: Open both requests side-by-side and fire them in rapid succession, or use Postman Collection Runner to run them with 0 delay. Only one will get a 201 Created, the other will get a 400 Conflict.",
+      "item": [
+        {
+          "name": "Conflict A: Employee 1 Tries to Book Desk 4",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ]
+            },
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deskId\": 4,\n  \"bookingDate\": \"2026-11-20\",\n  \"timeWindow\": \"AFTERNOON\",\n  \"employeeId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "bookings"]
+            }
+          }
+        },
+        {
+          "name": "Conflict B: Employee 2 Tries to Book Desk 4",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ]
+            },
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deskId\": 4,\n  \"bookingDate\": \"2026-11-20\",\n  \"timeWindow\": \"AFTERNOON\",\n  \"employeeId\": 2\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "bookings"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Placement & Search (Requirement V)",
+      "item": [
+        {
+          "name": "Fetch All Desks (Admin)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/desks",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "desks"]
+            }
+          }
+        },
+        {
+          "name": "Suggest Desk Near Colleague",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/placement/suggest?colleagueId=2&date=2026-10-15&timeWindow=MORNING",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "placement", "suggest"],
+              "query": [
+                { "key": "colleagueId", "value": "2" },
+                { "key": "date", "value": "2026-10-15" },
+                { "key": "timeWindow", "value": "MORNING" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Monitoring (Plus Point 6)",
+      "item": [
+        {
+          "name": "Prometheus Actuator Endpoint",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/prometheus",
+              "host": ["{{baseUrl}}"],
+              "path": ["actuator", "prometheus"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8081"
+    },
+    {
+      "key": "token",
+      "value": ""
+    }
+  ]
+}

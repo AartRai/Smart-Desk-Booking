@@ -9,6 +9,8 @@ import com.smartdesk.booking.repository.FloorRepository;
 import com.smartdesk.booking.repository.ZoneRepository;
 import com.smartdesk.booking.service.ZoneService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +25,7 @@ public class ZoneServiceImpl implements ZoneService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"zones", "zone"}, allEntries = true)
     public ZoneResponse createZone(ZoneRequest request) {
         Floor floor = floorRepository.findById(request.getFloorId())
                 .orElseThrow(() -> new ResourceNotFoundException("Floor not found with id: " + request.getFloorId()));
@@ -37,6 +40,7 @@ public class ZoneServiceImpl implements ZoneService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "zones")
     public List<ZoneResponse> getAllZones() {
         return zoneRepository.findAll().stream()
                 .map(this::mapToResponse)
@@ -45,6 +49,7 @@ public class ZoneServiceImpl implements ZoneService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "zone", key = "#id")
     public ZoneResponse getZoneById(Long id) {
         Zone zone = zoneRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Zone not found with id: " + id));

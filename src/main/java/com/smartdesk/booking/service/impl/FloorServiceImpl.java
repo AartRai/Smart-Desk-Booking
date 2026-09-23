@@ -7,6 +7,8 @@ import com.smartdesk.booking.exception.ResourceNotFoundException;
 import com.smartdesk.booking.repository.FloorRepository;
 import com.smartdesk.booking.service.FloorService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +22,7 @@ public class FloorServiceImpl implements FloorService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"floors", "floor"}, allEntries = true)
     public FloorResponse createFloor(FloorRequest request) {
         Floor floor = new Floor();
         floor.setName(request.getName());
@@ -34,6 +37,7 @@ public class FloorServiceImpl implements FloorService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "floors")
     public List<FloorResponse> getAllFloors() {
         return floorRepository.findAll().stream()
                 .map(this::mapToResponse)
@@ -42,6 +46,7 @@ public class FloorServiceImpl implements FloorService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "floor", key = "#id")
     public FloorResponse getFloorById(Long id) {
         Floor floor = floorRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Floor not found with id: " + id));

@@ -99,10 +99,10 @@ Please refer to the `demo/README.md` file for exact cURL requests to replicate t
 *Screenshots below demonstrate the core requirements being met:*
 
 ### 1. Successful Booking
-![Successful Booking](demo/1_successful_booking.png)
+![Successful Booking](demo/Booking.png)
 
 ### 4. 409 Conflict (Double Booking Race)
-![Double Booking Conflict](demo/4_double_booking_conflict.png)
+![Double Booking Conflict](demo/doubleboking.png)
 
 ### 5. No-Show Auto Release
-![No-Show Release Log](demo/5_no_show_release.png)
+![No-Show Release Log](demo/noShow.png)

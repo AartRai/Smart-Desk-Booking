@@ -9,6 +9,7 @@ import com.smartdesk.booking.entity.TimeWindow;
 import com.smartdesk.booking.exception.ResourceNotFoundException;
 import com.smartdesk.booking.repository.BookingRepository;
 import com.smartdesk.booking.repository.EmployeeRepository;
+import com.smartdesk.booking.service.QuotaService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,10 +27,14 @@ public class PlacementService {
     private final SpatialIndex spatialIndex;
     private final EmployeeRepository employeeRepository;
     private final BookingRepository bookingRepository;
+    private final QuotaService quotaService;
 
     public Desk suggestDesk(Long employeeId, Long floorId, LocalDate date, TimeWindow window) {
         Employee employee = employeeRepository.findById(employeeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
+
+        // Check if employee is even allowed to book on this floor before suggesting
+        quotaService.checkQuotaForBooking(employeeId, floorId, date, window);
 
         if (employee.getTeam() == null) {
             log.info("Employee has no team, returning random available desk");

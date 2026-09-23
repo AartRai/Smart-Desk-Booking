@@ -5,12 +5,14 @@ import com.smartdesk.booking.dto.DeskResponse;
 import com.smartdesk.booking.entity.Desk;
 import com.smartdesk.booking.entity.DeskType;
 import com.smartdesk.booking.entity.Employee;
+import com.smartdesk.booking.entity.Floor;
 import com.smartdesk.booking.entity.Zone;
 import com.smartdesk.booking.exception.ResourceNotFoundException;
 import com.smartdesk.booking.repository.DeskRepository;
 import com.smartdesk.booking.repository.EmployeeRepository;
 import com.smartdesk.booking.repository.ZoneRepository;
 import com.smartdesk.booking.service.impl.DeskServiceImpl;
+import com.smartdesk.booking.service.placement.SpatialIndex;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,6 +38,9 @@ public class DeskServiceImplTest {
     @Mock
     private EmployeeRepository employeeRepository;
 
+    @Mock
+    private SpatialIndex spatialIndex;
+
     @InjectMocks
     private DeskServiceImpl deskService;
 
@@ -44,9 +49,13 @@ public class DeskServiceImplTest {
 
     @BeforeEach
     void setUp() {
+        Floor floor = new Floor();
+        floor.setId(100L);
+        
         zone = new Zone();
         zone.setId(1L);
-        zone.setName("Zone A");
+        zone.setName("Development Zone");
+        zone.setFloor(floor);
 
         employee = new Employee();
         employee.setId(10L);
@@ -72,6 +81,7 @@ public class DeskServiceImplTest {
 
         when(zoneRepository.findById(1L)).thenReturn(Optional.of(zone));
         when(deskRepository.save(any(Desk.class))).thenReturn(savedDesk);
+        doNothing().when(spatialIndex).rebuildForFloor(anyLong());
 
         // Act
         DeskResponse response = deskService.createDesk(request);
@@ -107,6 +117,7 @@ public class DeskServiceImplTest {
         when(zoneRepository.findById(1L)).thenReturn(Optional.of(zone));
         when(employeeRepository.findById(10L)).thenReturn(Optional.of(employee));
         when(deskRepository.save(any(Desk.class))).thenReturn(savedDesk);
+        doNothing().when(spatialIndex).rebuildForFloor(anyLong());
 
         // Act
         DeskResponse response = deskService.createDesk(request);

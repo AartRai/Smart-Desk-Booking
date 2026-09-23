@@ -7,7 +7,9 @@ import com.smartdesk.booking.entity.BookingStatus;
 import com.smartdesk.booking.entity.Desk;
 import com.smartdesk.booking.entity.DeskType;
 import com.smartdesk.booking.entity.Employee;
+import com.smartdesk.booking.entity.Floor;
 import com.smartdesk.booking.entity.TimeWindow;
+import com.smartdesk.booking.entity.Zone;
 import com.smartdesk.booking.repository.BookingRepository;
 import com.smartdesk.booking.repository.DeskRepository;
 import com.smartdesk.booking.repository.EmployeeRepository;
@@ -39,6 +41,9 @@ public class BookingServiceImplTest {
     @Mock
     private EmployeeRepository employeeRepository;
 
+    @Mock
+    private QuotaService quotaService;
+
     @InjectMocks
     private BookingServiceImpl bookingService;
 
@@ -56,15 +61,24 @@ public class BookingServiceImplTest {
         employee2 = new Employee();
         employee2.setId(2L);
         employee2.setName("Bob");
+        
+        Floor floor = new Floor();
+        floor.setId(100L);
+        
+        Zone zone = new Zone();
+        zone.setId(200L);
+        zone.setFloor(floor);
 
         hotDesk = new Desk();
         hotDesk.setId(10L);
         hotDesk.setDeskType(DeskType.HOT);
+        hotDesk.setZone(zone);
 
         fixedDesk = new Desk();
         fixedDesk.setId(20L);
         fixedDesk.setDeskType(DeskType.FIXED);
         fixedDesk.setAssignedEmployee(employee1);
+        fixedDesk.setZone(zone);
     }
 
     @Test
@@ -89,6 +103,7 @@ public class BookingServiceImplTest {
         when(bookingRepository.existsByEmployeeIdAndBookingDateAndTimeWindowAndStatusNot(
                 1L, request.getBookingDate(), TimeWindow.FULL_DAY, BookingStatus.CANCELLED)).thenReturn(false);
         when(bookingRepository.save(any(Booking.class))).thenReturn(savedBooking);
+        doNothing().when(quotaService).checkQuotaForBooking(anyLong(), anyLong(), any(), any());
 
         BookingResponse response = bookingService.createBooking(request, 1L);
 
@@ -125,6 +140,7 @@ public class BookingServiceImplTest {
         when(employeeRepository.findById(1L)).thenReturn(Optional.of(employee1));
         when(bookingRepository.existsByDeskIdAndBookingDateAndTimeWindowAndStatusNot(
                 10L, request.getBookingDate(), TimeWindow.FULL_DAY, BookingStatus.CANCELLED)).thenReturn(true);
+        doNothing().when(quotaService).checkQuotaForBooking(anyLong(), anyLong(), any(), any());
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
             bookingService.createBooking(request, 1L);
@@ -143,6 +159,7 @@ public class BookingServiceImplTest {
         when(employeeRepository.findById(1L)).thenReturn(Optional.of(employee1));
         when(bookingRepository.existsByDeskIdAndBookingDateAndTimeWindowAndStatusNot(any(), any(), any(), any())).thenReturn(false);
         when(bookingRepository.existsByEmployeeIdAndBookingDateAndTimeWindowAndStatusNot(any(), any(), any(), any())).thenReturn(false);
+        doNothing().when(quotaService).checkQuotaForBooking(anyLong(), anyLong(), any(), any());
         
         when(bookingRepository.save(any(Booking.class))).thenThrow(new DataIntegrityViolationException("Duplicate key"));
 

@@ -3,6 +3,7 @@ package com.smartdesk.booking.service.placement;
 import com.smartdesk.booking.entity.*;
 import com.smartdesk.booking.repository.BookingRepository;
 import com.smartdesk.booking.repository.EmployeeRepository;
+import com.smartdesk.booking.service.QuotaService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,6 +33,9 @@ public class PlacementServiceTest {
 
     @Mock
     private BookingRepository bookingRepository;
+
+    @Mock
+    private QuotaService quotaService;
 
     @InjectMocks
     private PlacementService placementService;
@@ -80,6 +84,7 @@ public class PlacementServiceTest {
         when(spatialIndex.getAllDesksOnFloor(100L)).thenReturn(new java.util.ArrayList<>(List.of(desk1, desk2)));
         when(bookingRepository.existsByDeskIdAndBookingDateAndTimeWindowAndStatusNot(
                 anyLong(), any(), any(), any())).thenReturn(false);
+        doNothing().when(quotaService).checkQuotaForBooking(anyLong(), anyLong(), any(), any());
 
         Desk result = placementService.suggestDesk(10L, 100L, LocalDate.now(), TimeWindow.MORNING);
 
@@ -103,6 +108,7 @@ public class PlacementServiceTest {
         // Desk 2 is available
         when(bookingRepository.existsByDeskIdAndBookingDateAndTimeWindowAndStatusNot(
                 eq(2L), any(), any(), any())).thenReturn(false);
+        doNothing().when(quotaService).checkQuotaForBooking(anyLong(), anyLong(), any(), any());
 
         Desk result = placementService.suggestDesk(10L, 100L, LocalDate.now(), TimeWindow.MORNING);
 

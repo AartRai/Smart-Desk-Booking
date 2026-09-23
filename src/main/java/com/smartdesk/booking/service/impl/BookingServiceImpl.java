@@ -12,6 +12,7 @@ import com.smartdesk.booking.repository.BookingRepository;
 import com.smartdesk.booking.repository.DeskRepository;
 import com.smartdesk.booking.repository.EmployeeRepository;
 import com.smartdesk.booking.service.BookingService;
+import com.smartdesk.booking.service.QuotaService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -27,6 +28,7 @@ public class BookingServiceImpl implements BookingService {
     private final BookingRepository bookingRepository;
     private final DeskRepository deskRepository;
     private final EmployeeRepository employeeRepository;
+    private final QuotaService quotaService;
 
     @Override
     @Transactional
@@ -43,6 +45,9 @@ public class BookingServiceImpl implements BookingService {
                 throw new IllegalArgumentException("This fixed desk can only be booked by its assigned owner");
             }
         }
+
+        // Quota check
+        quotaService.checkQuotaForBooking(employeeId, desk.getZone().getFloor().getId(), request.getBookingDate(), request.getTimeWindow());
 
         // Fast availability check for desk double booking
         boolean deskAlreadyBooked = bookingRepository.existsByDeskIdAndBookingDateAndTimeWindowAndStatusNot(

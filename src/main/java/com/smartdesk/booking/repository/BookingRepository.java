@@ -22,4 +22,10 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     List<Booking> findByEmployeeTeamIdAndBookingDateAndTimeWindowAndStatusNot(
             Long teamId, LocalDate bookingDate, TimeWindow timeWindow, BookingStatus status);
+
+    long countByDeskZoneFloorIdAndBookingDateAndTimeWindowAndStatusNot(
+            Long floorId, LocalDate bookingDate, TimeWindow timeWindow, BookingStatus status);
+
+    long countByEmployeeTeamIdAndDeskZoneFloorIdAndBookingDateAndTimeWindowAndStatusNot(
+            Long teamId, Long floorId, LocalDate bookingDate, TimeWindow timeWindow, BookingStatus status);
 }

@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
@@ -33,6 +34,9 @@ public class BookingServiceImpl implements BookingService {
     private final DeskRepository deskRepository;
     private final EmployeeRepository employeeRepository;
     private final QuotaService quotaService;
+
+    @org.springframework.beans.factory.annotation.Value("${booking.no-show.cutoff-time:10:00}")
+    private String cutoffTimeStr;
 
     @Override
     @Transactional
@@ -95,6 +99,19 @@ public class BookingServiceImpl implements BookingService {
 
         if (booking.getStatus() == BookingStatus.CANCELLED) {
             throw new IllegalArgumentException("Booking is already cancelled");
+        }
+
+        String timezone = booking.getDesk().getZone().getFloor().getTimezone();
+        ZoneId zoneId = ZoneId.of(timezone);
+        ZonedDateTime nowInTimezone = ZonedDateTime.now(zoneId);
+        LocalDate localDate = nowInTimezone.toLocalDate();
+        LocalTime localTime = nowInTimezone.toLocalTime();
+        LocalTime cutoffTime = LocalTime.parse(cutoffTimeStr);
+
+        if (booking.getBookingDate().isBefore(localDate)) {
+            throw new IllegalArgumentException("Cannot cancel a booking from a past date");
+        } else if (booking.getBookingDate().equals(localDate) && !localTime.isBefore(cutoffTime)) {
+            throw new IllegalArgumentException("Cannot cancel a booking after the " + cutoffTimeStr + " cutoff time in " + timezone);
         }
 
         booking.setStatus(BookingStatus.CANCELLED);

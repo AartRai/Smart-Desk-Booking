@@ -19,7 +19,7 @@ public class PlacementController {
 
     @GetMapping("/suggest")
     public DeskResponse suggestDesk(
-            @RequestHeader("X-Employee-Id") Long employeeId,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal Long employeeId,
             @RequestParam Long floorId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam TimeWindow timeWindow) {

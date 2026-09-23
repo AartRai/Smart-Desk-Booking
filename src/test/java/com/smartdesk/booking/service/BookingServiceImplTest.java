@@ -23,11 +23,16 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import org.springframework.test.util.ReflectionTestUtils;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import org.mockito.MockedStatic;
 
 @ExtendWith(MockitoExtension.class)
 public class BookingServiceImplTest {
@@ -54,6 +59,7 @@ public class BookingServiceImplTest {
 
     @BeforeEach
     void setUp() {
+        ReflectionTestUtils.setField(bookingService, "cutoffTimeStr", "10:00");
         employee1 = new Employee();
         employee1.setId(1L);
         employee1.setName("Alice");
@@ -245,5 +251,130 @@ public class BookingServiceImplTest {
         });
         
         assertEquals("You can only check in on the day of the booking in your office's local time (UTC)", exception.getMessage());
+    }
+
+    @Test
+    void testCancelBooking_BeforeCutoff_Success() {
+        Booking booking = new Booking();
+        booking.setId(100L);
+        booking.setEmployee(employee1);
+        
+        // Use tomorrow to ensure it's before cutoff
+        ZoneId zoneId = ZoneId.of("UTC");
+        LocalDate tomorrow = ZonedDateTime.now(zoneId).toLocalDate().plusDays(1);
+        booking.setBookingDate(tomorrow);
+        booking.setStatus(BookingStatus.BOOKED);
+        
+        Floor floor = new Floor();
+        floor.setTimezone("UTC");
+        Zone zone = new Zone();
+        zone.setFloor(floor);
+        Desk mockDesk = new Desk();
+        mockDesk.setZone(zone);
+        booking.setDesk(mockDesk);
+
+        when(bookingRepository.findById(100L)).thenReturn(Optional.of(booking));
+
+        bookingService.cancelBooking(100L, 1L);
+
+        assertEquals(BookingStatus.CANCELLED, booking.getStatus());
+        verify(bookingRepository, times(1)).save(booking);
+    }
+
+    @Test
+    void testCancelBooking_AfterCutoff_ThrowsException() {
+        Booking booking = new Booking();
+        booking.setId(100L);
+        booking.setEmployee(employee1);
+        
+        ZoneId zoneId = ZoneId.of("UTC");
+        ZonedDateTime now = ZonedDateTime.now(zoneId);
+        
+        // Ensure cutoff time is set to a time before now (e.g. 00:01) to simulate being past the cutoff
+        ReflectionTestUtils.setField(bookingService, "cutoffTimeStr", "00:01");
+        
+        booking.setBookingDate(now.toLocalDate());
+        booking.setStatus(BookingStatus.BOOKED);
+        
+        Floor floor = new Floor();
+        floor.setTimezone("UTC");
+        Zone zone = new Zone();
+        zone.setFloor(floor);
+        Desk mockDesk = new Desk();
+        mockDesk.setZone(zone);
+        booking.setDesk(mockDesk);
+
+        when(bookingRepository.findById(100L)).thenReturn(Optional.of(booking));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            bookingService.cancelBooking(100L, 1L);
+        });
+        
+        assertEquals("Cannot cancel a booking after the 00:01 cutoff time in UTC", exception.getMessage());
+        verify(bookingRepository, never()).save(booking);
+    }
+
+    @Test
+    void testCancelBooking_PastDate_ThrowsException() {
+        Booking booking = new Booking();
+        booking.setId(100L);
+        booking.setEmployee(employee1);
+        
+        ZoneId zoneId = ZoneId.of("UTC");
+        LocalDate yesterday = ZonedDateTime.now(zoneId).toLocalDate().minusDays(1);
+        
+        booking.setBookingDate(yesterday);
+        booking.setStatus(BookingStatus.BOOKED);
+        
+        Floor floor = new Floor();
+        floor.setTimezone("UTC");
+        Zone zone = new Zone();
+        zone.setFloor(floor);
+        Desk mockDesk = new Desk();
+        mockDesk.setZone(zone);
+        booking.setDesk(mockDesk);
+
+        when(bookingRepository.findById(100L)).thenReturn(Optional.of(booking));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            bookingService.cancelBooking(100L, 1L);
+        });
+        
+        assertEquals("Cannot cancel a booking from a past date", exception.getMessage());
+        verify(bookingRepository, never()).save(booking);
+    }
+
+    @Test
+    void testCancelBooking_ExactCutoffBoundary_ThrowsException() {
+        Booking booking = new Booking();
+        booking.setId(100L);
+        booking.setEmployee(employee1);
+        
+        ReflectionTestUtils.setField(bookingService, "cutoffTimeStr", "10:00");
+        
+        Floor floor = new Floor();
+        floor.setTimezone("UTC");
+        Zone zone = new Zone();
+        zone.setFloor(floor);
+        Desk mockDesk = new Desk();
+        mockDesk.setZone(zone);
+        booking.setDesk(mockDesk);
+
+        ZonedDateTime exactCutoffTime = ZonedDateTime.parse("2026-10-15T10:00:00Z[UTC]");
+        booking.setBookingDate(exactCutoffTime.toLocalDate());
+        booking.setStatus(BookingStatus.BOOKED);
+
+        when(bookingRepository.findById(100L)).thenReturn(Optional.of(booking));
+
+        try (MockedStatic<ZonedDateTime> mockedZDT = mockStatic(ZonedDateTime.class, CALLS_REAL_METHODS)) {
+            mockedZDT.when(() -> ZonedDateTime.now(ZoneId.of("UTC"))).thenReturn(exactCutoffTime);
+            
+            IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+                bookingService.cancelBooking(100L, 1L);
+            });
+            
+            assertEquals("Cannot cancel a booking after the 10:00 cutoff time in UTC", exception.getMessage());
+            verify(bookingRepository, never()).save(booking);
+        }
     }
 }

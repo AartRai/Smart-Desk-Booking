@@ -68,3 +68,39 @@ The project contains 22 comprehensive unit and integration tests covering concur
 | `POST` | `/api/bookings/auto` | Auto-book a desk near teammates |
 | `POST` | `/api/bookings/{id}/checkin` | Check into a booking |
 | `GET` | `/actuator/health` | Check application health (Port 8081) |
+
+## Assumptions
+- **Cut-off Times:** The system universally assumes a localized `10:00 AM` cut-off for both check-ins and cancellations.
+- **Auto-Release Polling:** The no-show release cron job runs every 15 minutes, meaning a desk abandoned at `10:00` might theoretically not become available until `10:15` depending on the cron cycle.
+- **Team Structure:** An employee belongs to at most one team (`employee.getTeam()`), simplifying the quota and neighborhood calculations.
+- **Spatial Grid Size:** The internal spatial index assumes a fixed grid cell size of `10x10` coordinate units for clustering teammate desks.
+
+## Trade-offs
+- **Concurrency Strategy (DB Constraint vs Locking):** We use a database-level unique constraint (`UK558P4I6KSN6MJ3PKSO848YHGG`) instead of application-level pessimistic locking (`SELECT ... FOR UPDATE`). This avoids long-lived database locks and deadlocks during high-traffic 9:00 AM booking rushes, efficiently delegating the race condition resolution to the RDBMS index which simply rejects the loser.
+- **Placement Algorithm (Grid-Hashing vs PostGIS/K-D Tree):** We use an in-memory grid-hashing (Spatial Index) instead of a k-d tree or complex PostGIS spatial queries. Given that floor plans rarely change mid-day and have a bounded size (e.g. 500 desks), an in-memory `ConcurrentHashMap` of pre-computed cell grid buckets provides instantaneous neighbor lookups without paying the heavy I/O overhead of executing bounding-box SQL queries on every auto-book attempt.
+- **Caching Choice (In-Process vs Redis):** We utilize in-process Spring caching (`ConcurrentMapCacheManager`) instead of a distributed cache like Redis. Since the cached data consists solely of static layout entities (Floors, Zones) and this is designed as a single-node deployment, in-memory caching is dramatically simpler to operate, requires fewer moving parts, and eliminates network latency entirely.
+- **Cut-off Boundary Decision:** The cut-off time boundary is strictly exclusive (i.e. exact equality to 10:00:00 counts as "too late"). This guarantees that edge-case user cancellations exactly at the boundary moment are predictably denied, ensuring the background release job can safely free up the desk without race conditions against last-millisecond user actions.
+
+## Cost Estimation (Time & Space Complexity)
+- **Booking Write Path:** **Time: O(1) / Space: O(1).** The actual booking insertion is an O(1) B-Tree index lookup/insertion for the unique constraint. Space is strictly O(1) per request to store the entity.
+- **Neighbour-Placement Lookup:** **Time: O(1) / Space: O(D).** The spatial hashing algorithm computes the mathematical cell key directly from X/Y coordinates in constant time, and performs a hash map lookup for the center cell and its 8 immediate neighbors. It completely avoids an O(N²) pairwise comparison. Space scales linearly O(D) with the total number of desks D on the floor.
+- **Quota Check:** **Time: O(1) / Space: O(1).** The quota enforcement relies on a highly optimized database `COUNT` query utilizing composite indexes on `(team_id, floor_id, date)`. This provides near constant-time validation with O(1) memory overhead in the application server.
+
+## Demo
+Please refer to the `demo/instructions.md` file for exact cURL requests to replicate these scenarios.
+*Screenshots below demonstrate the core requirements being met:*
+
+### 1. Successful Booking
+![Successful Booking](demo/1_successful_booking.png)
+
+### 2. Successful Cancellation Before Cut-off
+![Cancel Before Cut-off](demo/2_cancel_before_cutoff.png)
+
+### 3. Rejected Cancellation After Cut-off
+![Cancel After Cut-off](demo/3_cancel_after_cutoff.png)
+
+### 4. 409 Conflict (Double Booking Race)
+![Double Booking Conflict](demo/4_double_booking_conflict.png)
+
+### 5. No-Show Auto Release
+![No-Show Release Log](demo/5_no_show_release.png)

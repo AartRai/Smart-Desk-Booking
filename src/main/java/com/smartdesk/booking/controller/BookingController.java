@@ -21,7 +21,7 @@ public class BookingController {
     @ResponseStatus(HttpStatus.CREATED)
     public BookingResponse createBooking(
             @Valid @RequestBody BookingRequest request,
-            @RequestHeader("X-Employee-Id") Long employeeId) {
+            @org.springframework.security.core.annotation.AuthenticationPrincipal Long employeeId) {
         return bookingService.createBooking(request, employeeId);
     }
 
@@ -29,20 +29,20 @@ public class BookingController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void cancelBooking(
             @PathVariable Long id,
-            @RequestHeader("X-Employee-Id") Long employeeId) {
+            @org.springframework.security.core.annotation.AuthenticationPrincipal Long employeeId) {
         bookingService.cancelBooking(id, employeeId);
     }
 
     @GetMapping("/me")
     public List<BookingResponse> getMyBookings(
-            @RequestHeader("X-Employee-Id") Long employeeId) {
+            @org.springframework.security.core.annotation.AuthenticationPrincipal Long employeeId) {
         return bookingService.getMyBookings(employeeId);
     }
 
     @PostMapping("/{id}/checkin")
     public BookingResponse checkIn(
             @PathVariable Long id,
-            @RequestHeader("X-Employee-Id") Long employeeId) {
+            @org.springframework.security.core.annotation.AuthenticationPrincipal Long employeeId) {
         return bookingService.checkIn(id, employeeId);
     }
 }

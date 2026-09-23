@@ -23,6 +23,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+import org.mockito.MockedStatic;
+
 @ExtendWith(MockitoExtension.class)
 public class NoShowReleaseServiceTest {
 
@@ -95,5 +97,35 @@ public class NoShowReleaseServiceTest {
         noShowReleaseService.releaseNoShows();
 
         verify(bookingRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void releaseNoShows_ExactCutoffBoundary_ReleasesBookings() {
+        ReflectionTestUtils.setField(noShowReleaseService, "cutoffTimeStr", "10:00");
+        
+        Desk desk = new Desk();
+        desk.setId(10L);
+
+        Booking noShowBooking = new Booking();
+        noShowBooking.setId(100L);
+        noShowBooking.setStatus(BookingStatus.BOOKED);
+        noShowBooking.setDesk(desk);
+
+        when(floorRepository.findDistinctTimezones()).thenReturn(List.of("UTC"));
+        
+        ZonedDateTime exactCutoffTime = ZonedDateTime.parse("2026-10-15T10:00:00Z[UTC]");
+        
+        try (MockedStatic<ZonedDateTime> mockedZDT = mockStatic(ZonedDateTime.class, CALLS_REAL_METHODS)) {
+            mockedZDT.when(() -> ZonedDateTime.now(ZoneId.of("UTC"))).thenReturn(exactCutoffTime);
+            
+            when(bookingRepository.findNoShowHotDeskBookingsByTimezone(exactCutoffTime.toLocalDate(), "UTC"))
+                    .thenReturn(List.of(noShowBooking));
+
+            noShowReleaseService.releaseNoShows();
+
+            // At EXACTLY 10:00:00, isBefore(10:00) is false, so it falls through and releases the desk.
+            assertEquals(BookingStatus.CANCELLED, noShowBooking.getStatus(), "Cut-off is exclusive: exactly at cut-off should release");
+            verify(bookingRepository, times(1)).saveAll(List.of(noShowBooking));
+        }
     }
 }

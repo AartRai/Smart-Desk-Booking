@@ -20,6 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -121,8 +123,13 @@ public class BookingServiceImpl implements BookingService {
             throw new IllegalArgumentException("Cannot check in. Booking is already " + booking.getStatus());
         }
 
-        if (!booking.getBookingDate().equals(LocalDate.now())) {
-            throw new IllegalArgumentException("You can only check in on the day of the booking");
+        // Module 8: Timezone & Cut-off Handling
+        String timezone = booking.getDesk().getZone().getFloor().getTimezone();
+        ZoneId zoneId = ZoneId.of(timezone);
+        LocalDate localDate = ZonedDateTime.now(zoneId).toLocalDate();
+
+        if (!booking.getBookingDate().equals(localDate)) {
+            throw new IllegalArgumentException("You can only check in on the day of the booking in your office's local time (" + timezone + ")");
         }
 
         booking.setCheckInTime(LocalDateTime.now());

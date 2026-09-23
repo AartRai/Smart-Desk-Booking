@@ -178,6 +178,14 @@ public class BookingServiceImplTest {
         booking.setBookingDate(LocalDate.now());
         booking.setStatus(BookingStatus.BOOKED);
         booking.setTimeWindow(TimeWindow.FULL_DAY);
+        
+        Floor floor = new Floor();
+        floor.setTimezone("UTC");
+        Zone zone = new Zone();
+        zone.setFloor(floor);
+        Desk mockDesk = new Desk();
+        mockDesk.setZone(zone);
+        booking.setDesk(mockDesk);
 
         when(bookingRepository.findById(100L)).thenReturn(Optional.of(booking));
         when(bookingRepository.save(any(Booking.class))).thenReturn(booking);
@@ -196,6 +204,14 @@ public class BookingServiceImplTest {
         booking.setEmployee(employee2);
         booking.setBookingDate(LocalDate.now());
         booking.setStatus(BookingStatus.BOOKED);
+        
+        Floor floor = new Floor();
+        floor.setTimezone("UTC");
+        Zone zone = new Zone();
+        zone.setFloor(floor);
+        Desk mockDesk = new Desk();
+        mockDesk.setZone(zone);
+        booking.setDesk(mockDesk);
 
         when(bookingRepository.findById(100L)).thenReturn(Optional.of(booking));
 
@@ -213,6 +229,14 @@ public class BookingServiceImplTest {
         booking.setEmployee(employee1);
         booking.setBookingDate(LocalDate.now().plusDays(1));
         booking.setStatus(BookingStatus.BOOKED);
+        
+        Floor floor = new Floor();
+        floor.setTimezone("UTC");
+        Zone zone = new Zone();
+        zone.setFloor(floor);
+        Desk mockDesk = new Desk();
+        mockDesk.setZone(zone);
+        booking.setDesk(mockDesk);
 
         when(bookingRepository.findById(100L)).thenReturn(Optional.of(booking));
 
@@ -220,6 +244,6 @@ public class BookingServiceImplTest {
             bookingService.checkIn(100L, 1L);
         });
         
-        assertEquals("You can only check in on the day of the booking", exception.getMessage());
+        assertEquals("You can only check in on the day of the booking in your office's local time (UTC)", exception.getMessage());
     }
 }

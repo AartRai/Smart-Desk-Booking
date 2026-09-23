@@ -24,6 +24,9 @@ public class FloorServiceImpl implements FloorService {
         Floor floor = new Floor();
         floor.setName(request.getName());
         floor.setMaxCapacity(request.getMaxCapacity());
+        if (request.getTimezone() != null) {
+            floor.setTimezone(request.getTimezone());
+        }
         
         Floor savedFloor = floorRepository.save(floor);
         return mapToResponse(savedFloor);
@@ -50,6 +53,7 @@ public class FloorServiceImpl implements FloorService {
         response.setId(floor.getId());
         response.setName(floor.getName());
         response.setMaxCapacity(floor.getMaxCapacity());
+        response.setTimezone(floor.getTimezone());
         return response;
     }
 }

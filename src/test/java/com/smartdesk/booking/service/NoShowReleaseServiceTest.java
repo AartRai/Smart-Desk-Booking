@@ -4,6 +4,7 @@ import com.smartdesk.booking.entity.Booking;
 import com.smartdesk.booking.entity.BookingStatus;
 import com.smartdesk.booking.entity.Desk;
 import com.smartdesk.booking.repository.BookingRepository;
+import com.smartdesk.booking.repository.FloorRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,7 +14,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDate;
-import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.List;
 
@@ -27,31 +29,38 @@ public class NoShowReleaseServiceTest {
     @Mock
     private BookingRepository bookingRepository;
 
+    @Mock
+    private FloorRepository floorRepository;
+
     @InjectMocks
     private NoShowReleaseService noShowReleaseService;
 
     @BeforeEach
     void setUp() {
-        // Since we are mocking the time using a property string, we can inject it
         ReflectionTestUtils.setField(noShowReleaseService, "cutoffTimeStr", "10:00");
     }
 
     @Test
+    void releaseNoShows_NoFloors_DoesNothing() {
+        when(floorRepository.findDistinctTimezones()).thenReturn(Collections.emptyList());
+        noShowReleaseService.releaseNoShows();
+        verify(bookingRepository, never()).findNoShowHotDeskBookingsByTimezone(any(), any());
+    }
+
+    @Test
     void releaseNoShows_BeforeCutoff_DoesNothing() {
-        // In order to test the before cutoff scenario without static mocking of LocalTime,
-        // we can dynamically set the cutoff time to be way in the future.
-        ReflectionTestUtils.setField(noShowReleaseService, "cutoffTimeStr", "23:59");
+        ReflectionTestUtils.setField(noShowReleaseService, "cutoffTimeStr", "23:59"); // way in the future
+        when(floorRepository.findDistinctTimezones()).thenReturn(List.of("UTC"));
         
         noShowReleaseService.releaseNoShows();
 
-        verify(bookingRepository, never()).findNoShowHotDeskBookings(any());
+        verify(bookingRepository, never()).findNoShowHotDeskBookingsByTimezone(any(), any());
         verify(bookingRepository, never()).saveAll(any());
     }
 
     @Test
     void releaseNoShows_AfterCutoff_ReleasesBookings() {
-        // Set cutoff time to way in the past so it always executes
-        ReflectionTestUtils.setField(noShowReleaseService, "cutoffTimeStr", "00:01");
+        ReflectionTestUtils.setField(noShowReleaseService, "cutoffTimeStr", "00:01"); // way in the past
 
         Desk desk = new Desk();
         desk.setId(10L);
@@ -61,7 +70,10 @@ public class NoShowReleaseServiceTest {
         noShowBooking.setStatus(BookingStatus.BOOKED);
         noShowBooking.setDesk(desk);
 
-        when(bookingRepository.findNoShowHotDeskBookings(LocalDate.now()))
+        when(floorRepository.findDistinctTimezones()).thenReturn(List.of("UTC"));
+        LocalDate localDate = ZonedDateTime.now(ZoneId.of("UTC")).toLocalDate();
+        
+        when(bookingRepository.findNoShowHotDeskBookingsByTimezone(localDate, "UTC"))
                 .thenReturn(List.of(noShowBooking));
 
         noShowReleaseService.releaseNoShows();
@@ -73,8 +85,11 @@ public class NoShowReleaseServiceTest {
     @Test
     void releaseNoShows_AfterCutoff_NoBookings_DoesNothing() {
         ReflectionTestUtils.setField(noShowReleaseService, "cutoffTimeStr", "00:01");
+        
+        when(floorRepository.findDistinctTimezones()).thenReturn(List.of("UTC"));
+        LocalDate localDate = ZonedDateTime.now(ZoneId.of("UTC")).toLocalDate();
 
-        when(bookingRepository.findNoShowHotDeskBookings(LocalDate.now()))
+        when(bookingRepository.findNoShowHotDeskBookingsByTimezone(localDate, "UTC"))
                 .thenReturn(Collections.emptyList());
 
         noShowReleaseService.releaseNoShows();

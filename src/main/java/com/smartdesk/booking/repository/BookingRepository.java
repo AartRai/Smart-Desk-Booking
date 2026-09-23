@@ -33,4 +33,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     @Query("SELECT b FROM Booking b WHERE b.bookingDate = :date AND b.status = 'BOOKED' AND b.checkInTime IS NULL AND b.desk.deskType = 'HOT'")
     List<Booking> findNoShowHotDeskBookings(@Param("date") LocalDate date);
+    
+    @Query("SELECT b FROM Booking b WHERE b.bookingDate = :date AND b.desk.zone.floor.timezone = :timezone AND b.status = 'BOOKED' AND b.checkInTime IS NULL AND b.desk.deskType = 'HOT'")
+    List<Booking> findNoShowHotDeskBookingsByTimezone(@Param("date") LocalDate date, @Param("timezone") String timezone);
 }

@@ -7,4 +7,5 @@ public class FloorResponse {
     private Long id;
     private String name;
     private Integer maxCapacity;
+    private String timezone;
 }

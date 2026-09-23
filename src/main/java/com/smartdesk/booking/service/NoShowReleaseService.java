@@ -3,6 +3,7 @@ package com.smartdesk.booking.service;
 import com.smartdesk.booking.entity.Booking;
 import com.smartdesk.booking.entity.BookingStatus;
 import com.smartdesk.booking.repository.BookingRepository;
+import com.smartdesk.booking.repository.FloorRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -12,6 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.List;
 
 @Slf4j
@@ -20,6 +23,7 @@ import java.util.List;
 public class NoShowReleaseService {
 
     private final BookingRepository bookingRepository;
+    private final FloorRepository floorRepository;
 
     @Value("${booking.no-show.cutoff-time:10:00}")
     private String cutoffTimeStr;
@@ -33,27 +37,40 @@ public class NoShowReleaseService {
     @Transactional
     public void releaseNoShows() {
         LocalTime cutoffTime = LocalTime.parse(cutoffTimeStr);
+        log.info("Running No-Show Auto-Release Job");
         
-        if (LocalTime.now().isBefore(cutoffTime)) {
-            log.debug("Current time is before the no-show cutoff time ({}), skipping auto-release.", cutoffTime);
+        List<String> timezones = floorRepository.findDistinctTimezones();
+        if (timezones.isEmpty()) {
+            log.info("No floors found, skipping auto-release.");
             return;
         }
 
-        log.info("Running No-Show Auto-Release Job for {}", LocalDate.now());
+        int totalReleased = 0;
+
+        for (String timezone : timezones) {
+            ZoneId zoneId = ZoneId.of(timezone);
+            ZonedDateTime nowInTimezone = ZonedDateTime.now(zoneId);
+            
+            if (nowInTimezone.toLocalTime().isBefore(cutoffTime)) {
+                log.debug("Current local time in {} is before the cutoff time ({}), skipping.", timezone, cutoffTime);
+                continue;
+            }
+
+            LocalDate localDate = nowInTimezone.toLocalDate();
+            log.info("Checking for no-shows in timezone {} for date {}", timezone, localDate);
+
+            List<Booking> noShows = bookingRepository.findNoShowHotDeskBookingsByTimezone(localDate, timezone);
+
+            if (!noShows.isEmpty()) {
+                for (Booking booking : noShows) {
+                    log.info("Releasing booking {} for desk {} due to no-show.", booking.getId(), booking.getDesk().getId());
+                    booking.setStatus(BookingStatus.CANCELLED);
+                }
+                bookingRepository.saveAll(noShows);
+                totalReleased += noShows.size();
+            }
+        }
         
-        List<Booking> noShows = bookingRepository.findNoShowHotDeskBookings(LocalDate.now());
-
-        if (noShows.isEmpty()) {
-            log.info("No un-checked-in bookings found to release.");
-            return;
-        }
-
-        for (Booking booking : noShows) {
-            log.info("Releasing booking {} for desk {} due to no-show.", booking.getId(), booking.getDesk().getId());
-            booking.setStatus(BookingStatus.CANCELLED);
-        }
-
-        bookingRepository.saveAll(noShows);
-        log.info("Successfully released {} no-show bookings.", noShows.size());
+        log.info("Successfully released {} no-show bookings globally.", totalReleased);
     }
 }

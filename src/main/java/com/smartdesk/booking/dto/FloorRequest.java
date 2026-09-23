@@ -11,6 +11,8 @@ public class FloorRequest {
     private String name;
 
     @NotNull(message = "Max capacity is required")
-    @Min(value = 1, message = "Max capacity must be at least 1")
+    @Min(value = 1, message = "Max capacity must be greater than 0")
     private Integer maxCapacity;
+
+    private String timezone = "UTC";
 }
